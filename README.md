@@ -26,6 +26,8 @@ python hammer.py
 
 The game is fairly straightforward because it's open ended - enter the price you think is closest to the worth of the displayed artwork. You cannot go backwards after submitting a guess. Once all guesses have been turned in, the game takes you to the results screen where you can view metadata for the artwork including the real price, what the acceptable range of guesses was, and whether you were correct.
 
+All prices are in USD - any works that have prices in foreign currencies are converted to USD for the game.
+
 There are 3 difficulty levels:
 - **Easy**: +/- 25% from actual price
 - **Medium**: +/- 15% from actual price
