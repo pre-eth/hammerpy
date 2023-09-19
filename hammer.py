@@ -11,9 +11,12 @@ if __name__ == "__main__":
   width = 1080
   height = 720
   background = "#010012"
+  major = 0
+  minor = 5
+  patch = 0
 
   window = Tk()
-  window.title("hammer.py")
+  window.title(f"HammerPy v{major}.{minor}.{patch}")
   window.geometry(f"{width}x{height}")
   window["bg"] = background
 
