@@ -1,6 +1,6 @@
-<div style="text-align: center">
-  <img src="img/hammer_py.png">
-</div>
+<p align="center">
+  <img width="15%" height="15%" src="img/hammer_py_readme.png">
+</p>
 
 # HammerPy
 
