@@ -1,6 +1,7 @@
 from tkinter import Tk
 
-from hammerpy.gui import HammerPy, remove_works
+from hammerpy.gui import HammerPy
+from hammerpy.util import remove_works
 
 def on_close():
   remove_works(app.works)
