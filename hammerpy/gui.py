@@ -69,6 +69,10 @@ class HammerPy(Frame):
     # Initialize all styles
     self.frame_style = self.font_style = self.radio_style = self.submit_style = self.entry_style = Style()
 
+    # On macOS, a default gray background appears for non-Canvas/Frame elements unless
+    # this line is added. I don't really know why, but oh well. Fix obtained from
+    # https://stackoverflow.com/a/50410938
+    self.frame_style.theme_use("default")
     self.frame_style.configure("HammerPy.TFrame", padding=0, width=width, background=self._background, 
                         foreground="white", font=("Helvetica", 16))
 
