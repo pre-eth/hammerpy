@@ -44,8 +44,8 @@ def scrape_artsy() -> Artwork:
     img = imgurl[imgurl.index('https%'):imgurl.rindex('.jpg')+4]
     img = sub("(larger?)", "normalized", img)
     img = unquote(img)
-    print("url:", img)
-    # check for 404 for fullsized url cause it uses the keyword 'normalized'
+
+    # check for HTTPError for fullsized url cause it uses the keyword 'normalized'
     # if unavailable try a different work
     if get(img).status_code != 200:
       artdivs.remove(div)

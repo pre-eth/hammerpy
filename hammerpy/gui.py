@@ -1,9 +1,10 @@
 from dataclasses import dataclass
 from PIL import ImageTk
-from tkinter import StringVar, IntVar, Canvas
-from tkinter.ttk import Frame, Label, Style, Scale, Button, Radiobutton, Entry
 from queue import Queue
 from threading import Thread
+
+from tkinter import StringVar, IntVar, Canvas
+from tkinter.ttk import Frame, Label, Style, Scale, Button, Radiobutton, Entry
 
 from hammerpy.artsy import scrape_artsy, Artwork
 
