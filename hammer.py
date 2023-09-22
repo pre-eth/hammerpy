@@ -19,7 +19,7 @@ if __name__ == "__main__":
   window.title(f"HammerPy v{major}.{minor}.{patch}")
   window.geometry(f"{width}x{height}")
   window["bg"] = background
-
+  
   window.protocol("WM_DELETE_WINDOW", on_close)
 
   app = HammerPy(window, width, height, background)
