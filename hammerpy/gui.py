@@ -1,49 +1,20 @@
-from dataclasses import dataclass
-from PIL import ImageTk
-from queue import Queue
+from PIL import Image, ImageTk
+from queue import Queue, Empty
 from threading import Thread
 
 from tkinter import StringVar, IntVar, Canvas
-from tkinter.ttk import Frame, Label, Style, Scale, Button, Radiobutton, Entry
+from tkinter.ttk import Frame, Label, Style, Scale, Button, Radiobutton, Entry, Combobox
 
-from hammerpy.artsy import scrape_artsy, Artwork
-
-@dataclass
-class Guesswork():
-  art: Artwork
-  path: str
-  disp_img: ImageTk.PhotoImage
-  review_img: ImageTk.PhotoImage
-  disp_width: int
-  disp_height: int
-  review_width: int
-  review_height: int
-  lower_bound: int
-  upper_bound: int
-  _keep: IntVar
-  _guess: int = 0
-
-  @property
-  def keep(self):
-    return self._keep
-
-  @keep.setter
-  def keep(self, value: int):
-    self._keep.set(value)
-
-  @property
-  def guess(self):
-    return self._guess
-
-  @guess.setter
-  def guess(self, value: int):
-    self._guess = value
+from hammerpy.artsy import scrape_artsy, Medium
+from hammerpy.sothebys import scrape_sothebys, Category
+from hammerpy.util import Guesswork, remove_works
 
 class HammerPy(Frame):
   def __init__(self, root, width, height, bg, *args, **kwargs):
     Frame.__init__(self, root, *args, **kwargs)
 
     # Core vars
+    self._root = root
     self.width = width
     self.height = height
     self._background = bg
@@ -52,9 +23,9 @@ class HammerPy(Frame):
     self.works = []
     self._artwork_limit = 10
     self._descriptions = [
-      "Easy - the price you guess has to be within +/- 25% of the actual price\n",
+      "Hard - the price you guess has to be within +/- 5% of the actual price\n",
       "Medium - the price you guess has to be within +/- 15% of the actual price\n",
-      "Hard - the price you guess has to be within +/- 5% of the actual price\n"
+      "Easy - the price you guess has to be within +/- 25% of the actual price\n",
     ]
 
     self._logo = ImageTk.PhotoImage(file="img/hammer_py.png")
@@ -64,6 +35,11 @@ class HammerPy(Frame):
 
     self._limit = IntVar()
     self._limit.set(1)
+
+    self._src = IntVar()
+    self._src.set(0)
+    
+    self._slug = StringVar()
 
     # Initialize all styles
     self.frame_style = self.font_style = self.radio_style = self.submit_style = self.entry_style = Style()
@@ -90,19 +66,26 @@ class HammerPy(Frame):
                                 foreground="white", font=("Helvetica", 16))
 
     self.submit_style.map("HammerPy.TButton", 
-                    background=[('active', "white"),
-                                ("selected", "white"),
-                                ("pressed", "white")],
-                    foreground=[('active', self._background),
-                                ("selected", self._background),
-                                ("pressed", self._background)])
+                          background=[("active", "white"),
+                                      ("selected", "white"),
+                                      ("pressed", "white")],
+                          foreground=[("active", self._background),
+                                      ("selected", self._background),
+                                      ("pressed", self._background)])
 
     # Add main application container
     self.backdrop = Frame(root, style="HammerPy.TFrame", padding=20)
     self.backdrop.pack(expand=True)
+
     self.draw_main_menu()
 
+  def _quit(self, e=None):
+    if self.works:
+      remove_works(self.works)
+    self._root.destroy()
+
   def draw_main_menu(self):
+    self._unbindall()
     for widget in self.backdrop.winfo_children():
       widget.destroy()    
 
@@ -114,76 +97,156 @@ class HammerPy(Frame):
     
     # Add logo, introduction, and prompt
     canvas = Canvas(self.backdrop, bg=self._background, width=self._logo.width(), 
-                  height=self._logo.height(), highlightthickness=0)
+                    height=self._logo.height(), highlightthickness=0)
     canvas.create_image((0, 0), image=self._logo, anchor="nw")
     canvas.pack()
 
     greeting = Label(self.backdrop, 
-                    style="HammerPy.TLabel",
-                    font=("Helvetica Bold", 24),
-                    text="HammerPy")
+                     style="HammerPy.TLabel",
+                     font=("Helvetica Bold", 24),
+                     text="HammerPy")
     greeting.pack()
 
     prompt = Label(self.backdrop, style="HammerPy.TLabel", 
-                  text="Please configure the game to your liking below and then press Start")
+                   text="Please configure the game to your liking below and click Start or press Return")
     prompt.pack()
-    
-    # Add configuration options
+
+    # Institution selection
+    src_options = Frame(self.backdrop, style="HammerPy.TFrame")
+    src_options.pack()
+
+    institution = Label(src_options, style="HammerPy.TLabel", 
+                        text="Institution:")
+
+    radio_artsy = Radiobutton(src_options, text="Artsy", variable=self._src, 
+                            command=self._switch_inst,
+                            value=0, style="HammerPy.TRadiobutton")
+
+    radio_sothebys = Radiobutton(src_options, text="Sotheby's", variable=self._src, 
+                              command=self._switch_inst,
+                              value=1, style="HammerPy.TRadiobutton")
+
+    institution.grid(row=0, column=0, sticky="E")
+    radio_artsy.grid(row=0, column=1, sticky="W")
+    radio_sothebys.grid(row=0, column=2, sticky="W")
+
+    # Filtering selection
+    filter_options = Frame(self.backdrop, style="HammerPy.TFrame")
+    filter_options.pack()    
+
+    self.filter_desc = Label(filter_options, style="HammerPy.TLabel", 
+                             text="Medium:")
+
+    self.filter_box = Combobox(filter_options, textvariable=self._slug, state="readonly")
+    self.filter_box["values"] = [m.name.capitalize() for m in list(Medium)]
+    self.filter_box.current(0)
+
+    self.filter_desc.grid(row=0, column=0, sticky="E")
+    self.filter_box.grid(row=0, column=1, sticky="W")
+
+    # Amount of works to retrieve
     work_options = Frame(self.backdrop, style="HammerPy.TFrame")
     work_options.pack()
 
     quantity_label = Label(work_options, style="HammerPy.TLabel", 
-                    text="Number of works to retrieve:", padding=0)
+                           text="Number of works to retrieve:", padding=0)
 
     self.quantity = Label(work_options, style="HammerPy.TLabel", text="01")
-    quantity_scale = Scale(work_options, orient="horizontal", length=150, 
-                          from_=1.0, to=10.0, variable=self._limit, command=self._switch_limit)
+    self.quantity_scale = Scale(work_options, orient="horizontal", length=150, 
+                                from_=1.0, to=10.0, variable=self._limit, 
+                                command=self._switch_limit)
 
     quantity_label.grid(row=0, column=0)
     self.quantity.grid(row=0, column=1)
-    quantity_scale.grid(row=0, column=2)
+    self.quantity_scale.grid(row=0, column=2)
 
     diff_options = Frame(self.backdrop, style="HammerPy.TFrame")
     diff_options.pack()
 
+    # Difficulty level
     diff_level = Label(diff_options, style="HammerPy.TLabel", 
                       text="Difficulty Level:")
 
     radio_easy = Radiobutton(diff_options, text="Easy", variable=self.difficulty, 
-                            command=self._switch_desc,
-                            value=2, style="HammerPy.TRadiobutton")
-    
+                             command=self._switch_desc,
+                             value=2, style="HammerPy.TRadiobutton")
+
     radio_medium = Radiobutton(diff_options, text="Medium", variable=self.difficulty, 
-                              command=self._switch_desc,
-                              value=1, style="HammerPy.TRadiobutton")
+                               command=self._switch_desc,
+                               value=1, style="HammerPy.TRadiobutton")
     
     radio_hard = Radiobutton(diff_options, text="Hard", variable=self.difficulty, 
-                            command=self._switch_desc,
-                            value=0, style="HammerPy.TRadiobutton")
+                             command=self._switch_desc,
+                             value=0, style="HammerPy.TRadiobutton")
 
-    diff_level.grid(row=0, column=0, sticky="E")
-    radio_easy.grid(row=0, column=1, sticky="W")
-    radio_medium.grid(row=0, column=2, sticky="W")
-    radio_hard.grid(row=0, column=3, sticky="W")
+    diff_level.grid(row=0, column=0, sticky='E')
+    radio_easy.grid(row=0, column=1, sticky='W')
+    radio_medium.grid(row=0, column=2, sticky='W')
+    radio_hard.grid(row=0, column=3, sticky='W')
 
     # Add difficulty description and start game button
-    self.diff_desc = Label(self.backdrop, style="HammerPy.TLabel", text=self._descriptions[0])
+    self.diff_desc = Label(self.backdrop, style="HammerPy.TLabel", text=self._descriptions[2])
     self.diff_desc.pack()
     
     submit = Button(self.backdrop, command=self.collect_works, style="HammerPy.TButton", text="START") 
     submit.pack()
+    
+    # Bind events directly to backdrop so user can press whatever without clicking to get focus
+    self._root.bind("q", self._quit)
+    self._root.bind("<Return>", self.collect_works)
+    self._root.bind("<Up>", self._switch_filter)
+    self._root.bind("<Down>", self._switch_filter)
+    self._root.bind("<Left>", self._kbd_switch_limit)
+    self._root.bind("<Right>", self._kbd_switch_limit)
+    self._root.bind('1', self._kbd_switch_desc)
+    self._root.bind('2', self._kbd_switch_desc)
+    self._root.bind('3', self._kbd_switch_desc)
+    self._root.bind('a', self._switch_inst)
+    self._root.bind('s', self._switch_inst)
+
+  def _switch_inst(self, e=None):
+    if e:
+      self._src.set(e.keysym != 'a')
+
+    if self._src.get() == 0:
+       self.filter_box["values"] = [m.name.capitalize().replace('_', ' ') for m in list(Medium)]
+    else:
+       self.filter_box["values"] = [m.name.capitalize() for m in list(Category)]
+    
+    self.filter_box.current(0)
+
+  def _switch_filter(self, e):
+    amount = 8 + self._src.get() * 3
+    curr = self.filter_box.current()
+    if e.keysym == "Down" and curr < amount - 1:
+      self.filter_box.current(curr + 1)
+    elif e.keysym == "Up" and curr > 0:
+      self.filter_box.current(curr - 1)
+
+  def _kbd_switch_desc(self, e):
+    val = abs(int(e.keysym) - 3)
+    self.difficulty.set(val)
+    self._switch_desc()
 
   def _switch_desc(self):
     from hammerpy.util import switch_desc
 
     switch_desc(self.diff_desc, self._descriptions, self.difficulty.get())
 
+  def _kbd_switch_limit(self, e):
+    current = self.quantity_scale.get()
+    if e.keysym == "Left" and current > 1.0:
+      self.quantity_scale.set(current - 1.0)
+    elif e.keysym == "Right" and current < 10.0:
+      self.quantity_scale.set(current + 1.0)     
+
   def _switch_limit(self, e):
     from hammerpy.util import switch_limit
 
     switch_limit(self.quantity, self._limit.get())
 
-  def draw_loading_screen(self):
+  def draw_loading_screen(self, e=None):
+    self._unbindall()
     for widget in self.backdrop.winfo_children():
       widget.destroy() 
 
@@ -193,13 +256,14 @@ class HammerPy(Frame):
     self.loading = Label(self.backdrop, style="HammerPy.TLabel", 
                         text=f"Fetching artworks... ({len(self.works)}/{self._limit.get()})\n")
     self.loading.pack()
+    self._root.bind("<Escape>", self.confirm_stop)
 
     self._back = Button(self.backdrop, command=self.confirm_stop, style="HammerPy.TButton", text="GO BACK")
     self._back.pack()
 
-  def collect_works(self):
-    from hammerpy.util import Scraper, update_status
-
+  def collect_works(self, e=None):
+    from hammerpy.util import Scraper
+    
     q = Queue()
     limit = self._limit.get()
     self.works = []
@@ -212,11 +276,12 @@ class HammerPy(Frame):
     t = Thread(target=update_status, daemon=True, args=(self, q, limit))
     t.start()
 
-  def stop_collecting(self):
+  def stop_collecting(self, e=None):
     self._scraper.stop()
     self.draw_main_menu()
 
-  def confirm_stop(self):
+  def confirm_stop(self, e=None):
+    self._unbindall()
     for widget in self.backdrop.winfo_children():
       widget.destroy() 
 
@@ -229,6 +294,9 @@ class HammerPy(Frame):
 
     self._no = Button(self.backdrop, command=self.redraw, style="HammerPy.TButton", text="NO")
     self._no.pack(side="right")
+
+    self._root.bind("<Return>", self.action)
+    self._root.bind("<Escape>", self.redraw)
   
   def start_game(self):
     self.active_guess = 0
@@ -260,7 +328,8 @@ class HammerPy(Frame):
     directions.grid(row=0, column=0, pady=25)
 
     self.guess_value = StringVar()
-    self.guess_entry = Entry(price_entry, exportselection=0, width=16, textvariable=self.guess_value)
+    self.guess_entry = Entry(price_entry, exportselection=0, width=16, textvariable=self.guess_value,
+                             takefocus=True)
     self.guess_entry.grid(row=0, column=1, pady=25)
 
     # last item's button should say FINISH to conclude game
@@ -294,7 +363,6 @@ class HammerPy(Frame):
     self.active_guess = 0
 
     # split screen into 2 halves:
-
     self.art_canvas = Frame(self.backdrop, style="HammerPy.TFrame", padding=20)
     self.art_canvas.pack(side="left")
 
@@ -309,7 +377,7 @@ class HammerPy(Frame):
     
     # the bind call here makes sure wrap length is dynamically adjusted for longer titles
     self.results_info = Label(self.art_results, style="HammerPy.TLabel")
-    self.results_info.bind('<Configure>', lambda e: self.results_info.config(wraplength=self.results_info.winfo_width()))
+    self.results_info.bind("<Configure>", lambda e: self.results_info.config(wraplength=self.results_info.winfo_width()))
     self.results_info.pack()
 
     guessed = Label(self.art_results, style="HammerPy.TLabel", text="You guessed")
@@ -364,8 +432,9 @@ class HammerPy(Frame):
 
     # compute all values needed for template string to show user's results
     title = self.curr_work.art.title
-    artist = title.split(" - ", 1)[0].strip()
-    title = title.split(" - ", 1)[1].strip()
+    pieces = title.split(" - ", 1)
+    artist = pieces[0].strip()
+    title = pieces[1].strip()
     year = title[title.rindex(' ') + 2:-1]
     title = title[:title.rindex(' ')].replace('\'', '\"')
     prices = self.curr_work.art.prices
@@ -382,3 +451,67 @@ class HammerPy(Frame):
       self.user_guess["foreground"] = self._success_color
     else:
       self.user_guess["foreground"] = self._failure_color
+  
+  def _unbindall(self):
+    self._root.unbind('1')
+    self._root.unbind('2')
+    self._root.unbind('3')
+    self._root.unbind('q')
+    self._root.unbind('a')
+    self._root.unbind('s')
+    self._root.unbind("<Escape>")
+    self._root.unbind("<Return>")
+    self._root.unbind("<Up>")
+    self._root.unbind("<Down>")
+    self._root.unbind("<Left>")
+    self._root.unbind("<Right>")
+
+
+# separate function in separate thread from HammerPy
+# because main thread must run GUI
+def update_status(h: HammerPy, q: Queue, limit: int):
+  from math import ceil, floor
+
+  disp_height = h.height - 200
+  factor = (0.05 + (0.1 * h.difficulty.get()))
+  review_width = 500
+
+  while True:
+    try:
+      item = q.get()
+    except Empty:
+      continue
+
+    if not item:
+      break
+    
+    # determine other properties for this work and construct Guesswork object
+    work, save_path = item
+
+    # determine dimensions for showing image in guess and result screens
+    # IF THE IMAGE OBJECT ISN'T READ ALL AT ONCE HERE IT DOESN'T LOAD
+    with Image.open(save_path) as img: 
+      width = img.width
+      height = img.height
+      disp_width = float(float(width) / float(height)) * float(disp_height)
+      size1 = img.resize((ceil(disp_width), disp_height))
+      tk_img = ImageTk.PhotoImage(image=size1)
+
+      review_height = 500.0 / (float(width) / float(height))
+      size2 = img.resize((review_width, ceil(review_height)))
+      tk_img2 = ImageTk.PhotoImage(image=size2)
+    
+    lower_bound = floor(work.prices[0] * (1.0 - factor))
+    upper_bound = floor(work.prices[1] * (1.0 + factor))
+    
+    keep = IntVar()
+    keep.set(0)
+
+    guess_work = Guesswork(work, save_path, tk_img, tk_img2, ceil(disp_width), disp_height, 
+                           review_width, ceil(review_height), lower_bound, upper_bound, keep)
+
+    h.works.append(guess_work)
+    h.loading["text"] = f"Fetching artworks... ({len(h.works)}/{limit})\n"
+  
+  # Queue has been read in full, start the actual guessing game
+  h.start_game()
