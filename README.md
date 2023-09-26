@@ -16,6 +16,8 @@ Dependencies:
 - requests
 - urllib3
 - Pillow
+- beautifulsoup4
+- selenium
 
 ```
 pip install -r requirements.txt
@@ -35,7 +37,7 @@ There are 3 difficulty levels:
 
 Fetching the art might take a while as the bottleneck here is network speed. If the number of requested works is >= 5, then a `time.sleep` call for 5 seconds is added to avoid spamming the service with requests
 
-HammerPy downloads the images of the art to your computer temporarily for the lifespan of the game. On the results screen, you can decide if you'd like to keep the images for any of the art you like. By default, this is set to `False`, and any artwork you do not explicitly mark as wanting to keep is removed from your system
+HammerPy downloads the images of the art to your computer temporarily for the lifespan of the game. On the results screen, you can decide if you'd like to keep the images for any of the art you like. By default, this is set to `False`, and any artwork you do not explicitly mark as wanting to keep is REMOVED from your system
 
 ## Screenshots
 
