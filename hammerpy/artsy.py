@@ -10,7 +10,7 @@ from hammerpy.util import Artwork
  
 # Create enum to represent different artwork mediums
 class Medium(Enum):
-  RANDOM = ""
+  ALL = ""
   PAINTING = "ion/painting"
   PRINTS = "ion/prints"
   PHOTOGRAPHY = "ion/photography"

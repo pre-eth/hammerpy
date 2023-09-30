@@ -16,7 +16,7 @@ from hammerpy.util import Artwork
 # We start by declaring all the different categories
 # and assign their URL slugs as their values
 class Category(Enum):
-    RANDOM = "shop-all"
+    ALL = "shop-all"
     JEWELRY = "luxury/jewelry"
     WATCHES = "fashion/handbag"
     HANDBAGS = "watches/watch"
