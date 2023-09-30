@@ -1,9 +1,8 @@
 from PIL import Image, ImageTk
 from queue import Queue, Empty
 from threading import Thread
-
-from tkinter import StringVar, IntVar, Canvas
-from tkinter.ttk import Frame, Label, Style, Scale, Button, Radiobutton, Entry, Combobox
+from tkinter import StringVar, IntVar, Canvas, Entry
+from tkinter.ttk import Frame, Label, Style, Scale, Button, Radiobutton, Combobox
 
 from hammerpy.artsy import scrape_artsy, Medium
 from hammerpy.sothebys import scrape_sothebys, Category
@@ -20,6 +19,7 @@ class HammerPy(Frame):
     self._background = bg
     self._success_color = "#00d176"
     self._failure_color = "#ed214a"
+    self._select_color = "#ffd903"
     self.works = []
     self._artwork_limit = 10
     self._descriptions = [
@@ -42,30 +42,30 @@ class HammerPy(Frame):
     self._slug = StringVar()
 
     # Initialize all styles
-    self.frame_style = self.font_style = self.radio_style = self.submit_style = self.entry_style = Style()
+    frame_style = font_style = radio_style = submit_style = Style()
 
     # On macOS, a default gray background appears for non-Canvas/Frame elements unless
     # this line is added. I don't really know why, but oh well. Fix obtained from
     # https://stackoverflow.com/a/50410938
-    self.frame_style.theme_use("default")
+    frame_style.theme_use("default")
     
-    self.frame_style.configure("HammerPy.TFrame", padding=0, width=width, background=self._background, 
+    frame_style.configure("HammerPy.TFrame", padding=0, width=width, background=self._background, 
                         foreground="white", font=("Helvetica", 16))
 
-    self.font_style.configure("HammerPy.TLabel", padding=15, background=self._background, 
+    font_style.configure("HammerPy.TLabel", padding=15, background=self._background, 
                         foreground="white", font=("Helvetica", 16))
   
-    self.radio_style.configure("HammerPy.TRadiobutton", padding=10, background=self._background, 
+    radio_style.configure("HammerPy.TRadiobutton", padding=10, background=self._background, 
                                 foreground="white", font=("Helvetica", 16))
     
-    self.radio_style.map("HammerPy.TRadiobutton", background=[('active', self._background)],
-                          indicatorcolor=[('selected', "#ffd903"),
-                                          ('pressed', "#ffd903")])
+    radio_style.map("HammerPy.TRadiobutton", background=[('active', self._background)],
+                          indicatorcolor=[('selected', self._select_color),
+                                          ('pressed', self._select_color)])
 
-    self.submit_style.configure("HammerPy.TButton", background=self._background, padding=10,
+    submit_style.configure("HammerPy.TButton", background=self._background, padding=10,
                                 foreground="white", font=("Helvetica", 16))
 
-    self.submit_style.map("HammerPy.TButton", 
+    submit_style.map("HammerPy.TButton", 
                           background=[("active", "white"),
                                       ("selected", "white"),
                                       ("pressed", "white")],
@@ -79,12 +79,12 @@ class HammerPy(Frame):
 
     self.draw_main_menu()
 
-  def _quit(self, e=None):
+  def quit_game(self, e=None):
     if self.works:
       remove_works(self.works)
     self._root.destroy()
 
-  def draw_main_menu(self):
+  def draw_main_menu(self, e=None):
     self._unbindall()
     for widget in self.backdrop.winfo_children():
       widget.destroy()    
@@ -138,7 +138,7 @@ class HammerPy(Frame):
                              text="Medium:")
 
     self.filter_box = Combobox(filter_options, textvariable=self._slug, state="readonly")
-    self.filter_box["values"] = [m.name.capitalize() for m in list(Medium)]
+    self._switch_inst()
     self.filter_box.current(0)
 
     self.filter_desc.grid(row=0, column=0, sticky="E")
@@ -192,7 +192,7 @@ class HammerPy(Frame):
     submit.pack()
     
     # Bind events directly to backdrop so user can press whatever without clicking to get focus
-    self._root.bind("q", self._quit)
+    self._root.bind("q", self.quit_game)
     self._root.bind("<Return>", self.collect_works)
     self._root.bind("<Up>", self._switch_filter)
     self._root.bind("<Down>", self._switch_filter)
@@ -328,8 +328,10 @@ class HammerPy(Frame):
     directions.grid(row=0, column=0, pady=25)
 
     self.guess_value = StringVar()
-    self.guess_entry = Entry(price_entry, exportselection=0, width=16, textvariable=self.guess_value,
-                             takefocus=True)
+    self.guess_entry = Entry(price_entry, exportselection=0, width=10, textvariable=self.guess_value,
+                             cursor="xterm", background="white", insertbackground="black")
+    self.guess_entry.bind("<Return>", self.log_guess)
+    self.guess_entry.focus_force()
     self.guess_entry.grid(row=0, column=1, pady=25)
 
     # last item's button should say FINISH to conclude game
@@ -340,16 +342,14 @@ class HammerPy(Frame):
     self.quit = Button(price_entry, command=self.confirm_stop, style="HammerPy.TButton", text="EXIT")
     self.quit.grid(row=1, column=1)
   
-  def log_guess(self):
-    print("LOGGING GUESS...")
+  def log_guess(self, e=None):
     self.answer.state(['disabled'])
     guess = self.guess_value.get().strip()
 
-    if guess.isnumeric():
+    if guess and guess.isnumeric():
       self.works[self.active_guess].guess = int(guess)
       self.active_guess += 1
       if self.active_guess == len(self.works):
-        print("going to results")
         self.draw_results_screen()
       else:
         self.add_artwork()
@@ -357,6 +357,7 @@ class HammerPy(Frame):
       self.errmsg["text"] = "Guess must be numeric characters [0-9] only"
 
   def draw_results_screen(self):
+    self._unbindall()
     for widget in self.backdrop.winfo_children():
       widget.destroy()
     
@@ -372,7 +373,7 @@ class HammerPy(Frame):
     # instead of having multiple labels to update for all these items
     # just have one that is updated based on this template string
     template_pieces = ["Artist: {}", "Title: {}", "Year: {}", "Actual price: ${}", 
-                       "Acceptable range: ${}"]
+                       "Valid Guesses: ${}"]
     self.template = '\n\n'.join(template_pieces)
     
     # the bind call here makes sure wrap length is dynamically adjusted for longer titles
@@ -406,23 +407,24 @@ class HammerPy(Frame):
     self.action = self.draw_main_menu
     self.redraw = self.draw_results_screen
     
-    next_button = Button(continue_options, command=self.next_result, style="HammerPy.TButton", text="NEXT")
-    next_button.grid(row=0, column=0, sticky='w', padx=20)
+    self.next_button = Button(continue_options, command=self.next_result, style="HammerPy.TButton", text="NEXT")
+    self.next_button.grid(row=0, column=0, sticky='w', padx=20)
 
     exit_button = Button(continue_options, command=self.confirm_stop, style="HammerPy.TButton", text="EXIT")
     exit_button.grid(row=0, column=1, sticky='e')
 
-    self.switch_result(0)
+    self.switch_result()
 
   def next_result(self):
-    if self.active_guess + 1 < 10:
-      self.switch_result(self.active_guess + 1)
+    if self.active_guess + 1 < len(self.works):
+      self.active_guess += 1
+      self.switch_result()
 
-  def switch_result(self, idx: int):
+  def switch_result(self):
     if self.art_canvas.winfo_children():
       self.art_canvas.winfo_children()[0].destroy()
 
-    self.curr_work = self.works[idx]    
+    self.curr_work = self.works[self.active_guess]    
 
     self.keep_yes["variable"] = self.keep_no["variable"] = self.curr_work.keep
 
@@ -451,6 +453,10 @@ class HammerPy(Frame):
       self.user_guess["foreground"] = self._success_color
     else:
       self.user_guess["foreground"] = self._failure_color
+    
+    if self.active_guess == 10:
+      self.next_button["text"] = "FINISH"
+      self.next_button["command"] = self.draw_main_menu()
   
   def _unbindall(self):
     self._root.unbind('1')
