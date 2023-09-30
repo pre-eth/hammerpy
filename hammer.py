@@ -20,7 +20,9 @@ class Window():
 
     self.app = HammerPy(self.root, self._width, self._height, self._bg)
     
-    self.root.protocol("WM_DELETE_WINDOW", self.app._quit)  
+    self.root.protocol("WM_DELETE_WINDOW", self.app.quit_game)
+    self.root.bind("<Control_L>+q", self.app.quit_game)
+    self.root.createcommand("::tk::mac::Quit", self.app.quit_game)
 
     self.root.mainloop()
 
