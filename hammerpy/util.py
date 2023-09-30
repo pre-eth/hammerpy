@@ -75,7 +75,7 @@ class Scraper(Thread):
       
       final_title = cleanse(work.title)
       save_path = f"img/{today_date}/{final_title}.jpg"
-      urlretrieve(work.image, save_path)
+      urlretrieve(work.image_url, save_path)
 
       count += 1
       self._q.put_nowait((work, save_path))
