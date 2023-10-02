@@ -2,7 +2,7 @@ from requests import get
 from bs4 import BeautifulSoup
 from math import floor
 from re import sub, findall
-from random import choice, randint
+from random import choice
 from urllib.parse import unquote
 from enum import Enum
 
@@ -19,7 +19,7 @@ class Medium(Enum):
   DESIGN = "ion/design"
   MIXED_MEDIA = "ion/mixed-media"
 
-def scrape_artsy() -> Artwork:
+def scrape_artsy(url: str) -> Artwork:
   agent = "Mozilla/5.0 (Windows Phone 10.0; Android 6.0.1; Microsoft; RM-1152) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/52.0.2743.116 Mobile Safari/537.36 Edge/15.15254"
  
   # max number of pages that will be searched
@@ -27,13 +27,13 @@ def scrape_artsy() -> Artwork:
  
   # for lookup with currency api, tried to include most of the major ones
   currencies = {"C$":"cad","€":"eur","£":"gbp","HK$":"hkd","¥":"jpy",
-                "ZAR":"zar","CN¥":"cny","BRL":"brl","₱":"php"}
+                "ZAR":"zar","CN¥":"cny","BRL":"brl","₱":"php", 
+                "KRW ₩":"krw"}
 
   l = 0
   while not l:
     # pick a random page and get its content      
-    link = f"https://www.artsy.net/collect?page={randint(1, pagemax)}"
-    dump = get(link, data={"User-Agent" : agent})
+    dump = get(url, data={"User-Agent" : agent})
     dump = BeautifulSoup(dump.text, "html.parser")
 
     # artworkGridItem is identifier for any work on the page, we choose a random one
