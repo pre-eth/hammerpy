@@ -264,13 +264,21 @@ class HammerPy(Frame):
   def collect_works(self, e=None):
     from hammerpy.util import Scraper
     
+    self.works = []
+
     q = Queue()
     limit = self._limit.get()
-    self.works = []
+    fn = scrape_artsy
+    slug = self._slug.get().upper()
+    if src_type := self._src.get():
+      fn = scrape_sothebys
+      slug = Category[slug].value
+    else:
+      slug = Medium[slug.replace(' ', '_')].value
 
     self.draw_loading_screen()
 
-    self._scraper = Scraper(q, limit, scrape_artsy)
+    self._scraper = Scraper(q, limit, src_type, slug, fn)
     self._scraper.start()
 
     t = Thread(target=update_status, daemon=True, args=(self, q, limit))
