@@ -6,6 +6,7 @@ from urllib.request import urlretrieve
 from re import sub
 from datetime import date
 from os import mkdir, path
+from random import randint
 from threading import Thread
 from queue import Queue
 from os import remove, path
@@ -51,13 +52,15 @@ class Guesswork():
     self._guess = value
 
 class Scraper(Thread):
-  def __init__(self, queue: Queue, limit: int, scrape_fn: FunctionType):
+  def __init__(self, queue: Queue, limit: int, src_type: int, slug: str, scrape_fn: FunctionType):
     super().__init__()
     self._running = True            # sentinel to track whether user/program has terminated thread
     self.daemon = True              # mark thread as daemon so it runs in bg, stops on program close
     self._q = queue                 # Message queue for sharing downloaded works to a consumer thread
     self._limit = limit             # how many artworks to scrape
+    self._src_type = src_type       # whether source to scrape is Artsy (0) or Sotheby's (1)
     self._scrape = scrape_fn        # source to scrape
+    self._slug = slug               # filter that user wants to apply to results
 
   def stop(self):
     self._running = False
@@ -69,10 +72,35 @@ class Scraper(Thread):
     today_date = date.today()
     if not path.isdir(f"img/{today_date}"):
       mkdir(f"img/{today_date}")
-    
+
+    self.driver = None
+    scrape_url = ""
+    pagemax = 100
+    if self._src_type:
+      from selenium import webdriver
+      from selenium.webdriver.firefox.options import Options
+      from selenium.webdriver.common.by import By
+
+      scrape_url = f"https://www.sothebys.com/en/buy/{self._slug}"
+      options = Options()
+      options.add_argument("--headless")
+      self.driver = webdriver.Firefox(options=options)
+      self.driver.get(scrape_url)
+      sleep(3)
+
+      # we start by getting the page limit for this category
+      # need to read second to last element of pagination
+      last_li = self.driver.find_element(By.XPATH, "/html/body/div[2]/div[5]/nav")
+      pages = last_li.find_elements(By.TAG_NAME, "li")[-2]
+      pagemax = int(pages.text) 
+    else:
+      scrape_url = f"https://www.artsy.net/collect{self._slug}"
+
     while self._running and count < self._limit:
-      work = self._scrape()
+      url = f"{scrape_url}?page={randint(1, pagemax + 1)}"
+      work = self._scrape(url, self.driver) if self._src_type else self._scrape(url)
       
+      print(work)
       final_title = cleanse(work.title)
       save_path = f"img/{today_date}/{final_title}.jpg"
       urlretrieve(work.image_url, save_path)
@@ -81,6 +109,9 @@ class Scraper(Thread):
       self._q.put_nowait((work, save_path))
       if count == 5:
         sleep(5)
+    
+    if self._src_type:
+      self.driver.quit()
 
     self._q.put_nowait(None)
 
