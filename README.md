@@ -6,7 +6,7 @@
 
 HammerPy is a game where users guess the price of artwork available on auction websites. The name comes from the term "hammer price", which refers to the final selling price of a work. Asking prices are used instead for art that is still available for sale.
 
-Currently the game retrieves artwork from the [Artsy](https://www.artsy.net/) art exchange, though other sources and popular auction sites will be added in the future.
+Currently the game retrieves artwork from [Artsy](https://www.artsy.net) and [Sotheby's](https://www.sothebys.com), and more sources will hopefully be added in the future.
 
 ## Setup and Installation
 
@@ -38,6 +38,20 @@ There are 3 difficulty levels:
 Fetching the art might take a while as the bottleneck here is network speed. If the number of requested works is >= 5, then a `time.sleep` call for 5 seconds is added to avoid spamming the service with requests
 
 HammerPy downloads the images of the art to your computer temporarily for the lifespan of the game. On the results screen, you can decide if you'd like to keep the images for any of the art you like. By default, this is set to `False`, and any artwork you do not explicitly mark as wanting to keep is REMOVED from your system
+
+## Keyboard Navigation
+
+You can traverse the menu without using the mouse! Here are the key bindings:
+
+`q` - Quit. `Control/Command Q` work as well.
+`a` - Selects Artsy as the source
+`s` - Selects Sotheby's as the source
+`ArrowUp/ArrowDown` - Cycles through the Medium / Category
+`ArrowLeft/ArrowRight` - Decrements or increments the number of works to retrieve
+`1` - Sets the difficulty to Easy
+`2` - Sets the difficulty to Medium
+`3` - Sets the difficulty to Hard
+`Return` - Starts game
 
 ## Screenshots
 
