@@ -9,7 +9,7 @@ class Window():
     self._bg = "#010012"
     self._major = 0
     self._minor = 5
-    self._patch = 1
+    self._patch = 2
 
     # setup window stuff
     self.root = Tk()
