@@ -61,6 +61,7 @@ class Scraper(Thread):
     self._src_type = src_type       # whether source to scrape is Artsy (0) or Sotheby's (1)
     self._scrape = scrape_fn        # source to scrape
     self._slug = slug               # filter that user wants to apply to results
+    self.driver = None
 
   def stop(self):
     self._running = False
@@ -73,24 +74,25 @@ class Scraper(Thread):
     if not path.isdir(f"img/{today_date}"):
       mkdir(f"img/{today_date}")
 
-    self.driver = None
+    work = None
     scrape_url = ""
     pagemax = 100
     if self._src_type:
       from selenium import webdriver
-      from selenium.webdriver.firefox.options import Options
+      from selenium.webdriver.chrome.options import Options
       from selenium.webdriver.common.by import By
 
       scrape_url = f"https://www.sothebys.com/en/buy/{self._slug}"
       options = Options()
+      options.add_argument('--disable-blink-features=AutomationControlled')
       options.add_argument("--headless")
-      self.driver = webdriver.Firefox(options=options)
+      self.driver = webdriver.Chrome(options=options)
+      
       self.driver.get(scrape_url)
       sleep(3)
-
       # we start by getting the page limit for this category
       # need to read second to last element of pagination
-      last_li = self.driver.find_element(By.XPATH, "/html/body/div[2]/div[5]/nav")
+      last_li = self.driver.find_element(By.TAG_NAME, "nav")
       pages = last_li.find_elements(By.TAG_NAME, "li")[-2]
       pagemax = int(pages.text) 
     else:
@@ -98,9 +100,13 @@ class Scraper(Thread):
 
     while self._running and count < self._limit:
       url = f"{scrape_url}?page={randint(1, pagemax + 1)}"
-      work = self._scrape(url, self.driver) if self._src_type else self._scrape(url)
       
-      print(work)
+      if self._src_type:
+        work = self._scrape(url, self.driver)
+      else:
+        work = self._scrape(url)
+      
+      # print(work)
       final_title = cleanse(work.title)
       save_path = f"img/{today_date}/{final_title}.jpg"
       urlretrieve(work.image_url, save_path)
