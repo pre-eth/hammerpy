@@ -430,7 +430,7 @@ class HammerPy(Frame):
     self.switch_result()
 
   def next_result(self):
-    if self.active_guess + 1 < self._limit:
+    if self.active_guess + 1 < self._limit.get():
       self.active_guess += 1
       self.switch_result()
 
