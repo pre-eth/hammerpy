@@ -80,6 +80,8 @@ class HammerPy(Frame):
     self.draw_main_menu()
 
   def quit_game(self, e=None):
+    if self._scraper and self._scraper.driver:
+      self._scraper.driver.quit()
     if self.works:
       remove_works(self.works)
     self._root.destroy()
@@ -268,17 +270,19 @@ class HammerPy(Frame):
 
     q = Queue()
     limit = self._limit.get()
-    fn = scrape_artsy
+    _src = self._src.get()
+
+    fn = scrape_artsy if not _src else scrape_sothebys
     slug = self._slug.get().upper()
-    if src_type := self._src.get():
-      fn = scrape_sothebys
+
+    if _src:
       slug = Category[slug].value
     else:
       slug = Medium[slug.replace(' ', '_')].value
 
     self.draw_loading_screen()
 
-    self._scraper = Scraper(q, limit, src_type, slug, fn)
+    self._scraper = Scraper(q, limit, _src, slug, fn)
     self._scraper.start()
 
     t = Thread(target=update_status, daemon=True, args=(self, q, limit))
