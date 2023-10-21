@@ -26,7 +26,6 @@ class Category(Enum):
 
 def scrape_sothebys(url: str, driver: webdriver) -> Artwork:
   driver.get(url)
-
   # let things load
   sleep(3)
 
@@ -39,7 +38,11 @@ def scrape_sothebys(url: str, driver: webdriver) -> Artwork:
   img = work.find_elements(By.XPATH, "//div[1]/span/img")[0]
   img_url = img.get_attribute("src")
   
-  title = work.find_element(By.TAG_NAME, "h5").text
+  title = "" 
+  if work.find_elements(By.TAG_NAME, "h5"):
+    title = work.find_element(By.TAG_NAME, "h5").text
+  else:
+    title = work.find_element(By.TAG_NAME, "p").text
 
   title += ' ' + work.find_elements(By.TAG_NAME, "p")[0].text
 
