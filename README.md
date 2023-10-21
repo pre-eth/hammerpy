@@ -10,7 +10,7 @@ Currently the game retrieves artwork from [Artsy](https://www.artsy.net) and [So
 
 ## Setup and Installation
 
-HammerPy requires >= Python 3.8
+HammerPy requires >= Python 3.8. In order for the Sotheby's integration to work, you need to install a web driver for Firefox, which takes 2 seconds and can be found [here](https://github.com/mozilla/geckodriver/releases).
 
 Dependencies:
 - requests
@@ -52,6 +52,8 @@ You can traverse the menu without using the mouse! Here are the key bindings:
 `2` - Sets the difficulty to Medium
 `3` - Sets the difficulty to Hard
 `Return` - Starts game
+
+You can also hit `Return` to advance through the guessing screens.
 
 ## Screenshots
 
