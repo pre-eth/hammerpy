@@ -66,8 +66,7 @@ def scrape_artsy(url: str) -> Artwork:
 
       prices = price.split('-')
       work_prices.append(int(prices[0]))
-      idx = len(prices) > 1
-      work_prices.append(int(prices[idx]))
+      work_prices.append(int(prices[-1]))
     else:
       intl_money = [c for c in currencies if price.startswith(c)]
       if intl_money:
