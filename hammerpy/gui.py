@@ -81,6 +81,7 @@ class HammerPy(Frame):
 
   def quit_game(self, e=None):
     if self._scraper and self._scraper.driver:
+      print("CLOSING DRIVER...")
       self._scraper.driver.quit()
     if self.works:
       remove_works(self.works)
@@ -341,13 +342,13 @@ class HammerPy(Frame):
 
     self.guess_value = StringVar()
     self.guess_entry = Entry(price_entry, exportselection=0, width=10, textvariable=self.guess_value,
-                             cursor="xterm", background="white", insertbackground="black")
+                             cursor="xterm", background="white", insertbackground="black", foreground="black")
     self.guess_entry.bind("<Return>", self.log_guess)
     self.guess_entry.focus_force()
     self.guess_entry.grid(row=0, column=1, pady=25)
 
     # last item's button should say FINISH to conclude game
-    button_text = "NEXT" if not self.active_guess == len(self.works) - 1 else "FINISH" 
+    button_text = "NEXT" if not self.active_guess == self._limit.get() - 1 else "FINISH" 
     self.answer = Button(price_entry, command=self.log_guess, style="HammerPy.TButton", text=button_text)
     self.answer.grid(row=1, column=0, sticky='w')
 
@@ -355,7 +356,7 @@ class HammerPy(Frame):
     self.quit.grid(row=1, column=1)
   
   def log_guess(self, e=None):
-    self.answer.state(['disabled'])
+    self.answer.config(state="disabled")
     guess = self.guess_value.get().strip()
 
     if guess and guess.isnumeric():
@@ -367,6 +368,7 @@ class HammerPy(Frame):
         self.add_artwork()
     else:
       self.errmsg["text"] = "Guess must be numeric characters [0-9] only"
+      self.answer.config(state="normal")
 
   def draw_results_screen(self):
     self._unbindall()
@@ -385,7 +387,7 @@ class HammerPy(Frame):
     # instead of having multiple labels to update for all these items
     # just have one that is updated based on this template string
     template_pieces = ["Artist: {}", "Title: {}", "Year: {}", "Actual price: ${}", 
-                       "Valid Guesses: ${}"]
+                       "Valid Guesses: ${} ≤ N ≤ ${}"]
     self.template = '\n\n'.join(template_pieces)
     
     # the bind call here makes sure wrap length is dynamically adjusted for longer titles
@@ -409,7 +411,7 @@ class HammerPy(Frame):
     self.keep_yes = Radiobutton(options, text="YES", value=1, style="HammerPy.TRadiobutton")
     self.keep_no = Radiobutton(options, text="NO", value=0, style="HammerPy.TRadiobutton")
 
-    keep.grid(row=0, column=0, pady=10)
+    keep.grid(row=0, column=0, pady=5)
     self.keep_yes.grid(row=0, column=1)
     self.keep_no.grid(row=0, column=2)
 
@@ -428,7 +430,7 @@ class HammerPy(Frame):
     self.switch_result()
 
   def next_result(self):
-    if self.active_guess + 1 < len(self.works):
+    if self.active_guess + 1 < self._limit:
       self.active_guess += 1
       self.switch_result()
 
@@ -447,16 +449,23 @@ class HammerPy(Frame):
     # compute all values needed for template string to show user's results
     title = self.curr_work.art.title
     pieces = title.split(" - ", 1)
-    artist = pieces[0].strip()
-    title = pieces[1].strip()
-    year = title[title.rindex(' ') + 2:-1]
-    title = title[:title.rindex(' ')].replace('\'', '\"')
+    if len(pieces) == 1:
+      artist = ""
+      year = ""
+      title = pieces[0].strip()
+    else:
+      artist = pieces[0].strip()
+      title = pieces[1].strip()
+      year = title[title.rindex(' ') + 2:-1]
+      title = title[:title.rindex(' ')].replace('\'', '\"')
+
     prices = self.curr_work.art.prices
     price = prices[0] if prices[0] == prices[1] else f"{prices[0]} - {prices[1]}"
-    acceptable_range = f"{self.curr_work.lower_bound} ≤ N ≤ ${self.curr_work.upper_bound}"
 
-    template = self.template.format(artist, title, year, price, acceptable_range)
-    self.results_info["text"] = template
+    if not artist:
+      self.results_info["text"] = self.template.replace("Artist: {}\n\n", "").replace("Year: {}\n\n", "").format(title, price, self.curr_work.lower_bound, self.curr_work.upper_bound)
+    else:
+      self.results_info["text"] = self.template.format(artist, title, year, price, self.curr_work.lower_bound, self.curr_work.upper_bound)
 
     # the user's guess, with color based on correctness
     self.user_guess["text"] = f"${self.curr_work.guess}"
@@ -466,9 +475,9 @@ class HammerPy(Frame):
     else:
       self.user_guess["foreground"] = self._failure_color
     
-    if self.active_guess == 10:
+    if self.active_guess == self._limit.get() - 1:
       self.next_button["text"] = "FINISH"
-      self.next_button["command"] = self.draw_main_menu()
+      self.next_button["command"] = self.draw_main_menu
   
   def _unbindall(self):
     self._root.unbind('1')
