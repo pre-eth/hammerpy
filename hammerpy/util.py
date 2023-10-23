@@ -9,7 +9,7 @@ from os import mkdir, path
 from random import randint
 from threading import Thread
 from queue import Queue
-from os import remove, path
+from os import remove, path, environ
 
 from tkinter import IntVar
 from tkinter.ttk import Label
@@ -77,44 +77,56 @@ class Scraper(Thread):
     work = None
     scrape_url = ""
     pagemax = 100
+    options = Options()
     if self._src_type:
       from selenium import webdriver
       from selenium.webdriver.firefox.options import Options
       from selenium.webdriver.common.by import By
 
       scrape_url = f"https://www.sothebys.com/en/buy/{self._slug}"
-      options = Options()
+
+      options.page_load_strategy = "none"
+      options.add_argument('--disable-blink-features=AutomationControlled')
+      options.add_argument(
+          "--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.88 Safari/537.36")
       options.add_argument("--headless")
-      self.driver = webdriver.Firefox(options=options)
-      self.driver.get(scrape_url)
-      sleep(3)
-      # we start by getting the page limit for this category
-      # need to read second to last element of pagination
-      last_li = self.driver.find_element(By.TAG_NAME, "nav")
-      pages = last_li.find_elements(By.TAG_NAME, "li")[-2]
-      pagemax = int(pages.text) 
-      self.driver.quit()
+
+      if "HPY_SOTHEBYS_PMAX" not in environ:
+        self.driver = webdriver.Firefox(options=options)
+        self.driver.get(scrape_url)
+        sleep(5)
+
+        # we start by getting the page limit for this category
+        # need to read second to last element of pagination
+        last_li = self.driver.find_element(By.TAG_NAME, "nav")
+        pages = last_li.find_elements(By.TAG_NAME, "li")[-2]
+        pagemax = int(pages.text) 
+
+        self.driver.quit()
     else:
       scrape_url = f"https://www.artsy.net/collect{self._slug}"
 
+    works = []
     while self._running and count < self._limit:
-      url = f"{scrape_url}?page={randint(1, pagemax + 1)}"
+      url = f"{scrape_url}?page={randint(1, pagemax)}"
       if self._src_type:
         self.driver = webdriver.Firefox(options=options)
-        work = self._scrape(url, self.driver)
+        works = self._scrape(url, self.driver)
+        self.driver.quit()
       else:
-        work = self._scrape(url)
+        works = self._scrape(url)
       
       # print(work)
-      final_title = cleanse(work.title)
-      save_path = f"img/{today_date}/{final_title}.jpg"
-      urlretrieve(work.image_url, save_path)
-      print(f"Downloaded {count + 1}/{self._limit}")
+      for work in works:
+        final_title = cleanse(work.title)
+        save_path = f"img/{today_date}/{final_title}.jpg"
+        urlretrieve(work.image_url, save_path)
+        print(f"Downloaded {count + 1}/{self._limit}")
 
-      count += 1
-      self._q.put_nowait((work, save_path))
-      if count == 5:
-        sleep(5)
+        count += 1
+        self._q.put_nowait((work, save_path))
+        if count == 5:
+          sleep(5)
     
     if self._src_type:
       self.driver.quit()
