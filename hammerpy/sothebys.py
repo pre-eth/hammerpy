@@ -1,6 +1,7 @@
+from bs4 import BeautifulSoup
 from selenium import webdriver
 from selenium.webdriver.common.by import By
-from random import choice, randint
+from random import randint
 from urllib.parse import unquote
 from time import sleep
 from enum import Enum
@@ -24,36 +25,49 @@ class Category(Enum):
   APPAREL = "fashion/apparel"
   SNEAKERS = "fashion/sneaker"
 
-def scrape_sothebys(url: str, driver: webdriver) -> Artwork:
+def scrape_sothebys(url: str, driver: webdriver.Firefox) -> Artwork:
   driver.get(url)
   # let things load
-  sleep(3)
+  sleep(5)
 
-  items = driver.find_element(By.TAG_NAME, "ul")
-  
-  works = items.find_elements(By.TAG_NAME, "li")
-  idx = randint(0, len(works) - 1)
-  work = driver.find_element(By.ID, f"tilePositionIndex={idx}")
-  
-  img = work.find_elements(By.XPATH, "//div[1]/span/img")[0]
-  img_url = img.get_attribute("src")
-  
-  title = "" 
-  if work.find_elements(By.TAG_NAME, "h5"):
-    title = work.find_element(By.TAG_NAME, "h5").text
-  else:
-    title = work.find_element(By.TAG_NAME, "p").text
+  items = driver.find_element(By.TAG_NAME, "ul").find_elements(By.TAG_NAME, "li")
+  count = randint(1, 4)
+  past = []
+  works = []
 
-  title += ' ' + work.find_elements(By.TAG_NAME, "p")[0].text
+  for _ in range(count):
+    idx = randint(1, len(items))  
+    if idx in past:
+      if idx + 1 < len(items):
+        idx += 1
+      elif idx - 1 < len(items):
+        idx -= 1
 
-  price = work.find_elements(By.TAG_NAME, "p")[1].text.replace(',', '')
-  price = price[:-4]
+    work = driver.find_element(By.ID, f"tilePositionIndex={idx}")
+    soup = BeautifulSoup(work.get_attribute("innerHTML"), "html.parser")
+    # print("id:", idx)
+    # print(work.get_attribute("innerHTML")) 
 
-  driver.get(img_url)
-  sleep(3)
-  img_url = driver.current_url
-  cutoff = img_url.index("?url=") + 5
-  img_url = unquote(img_url[cutoff:])
+    img = soup.find("img")
+    img_url = img["src"]
+    # print(img_url)
+    
+    # Title and price info
+    title = "" 
+    if soup.h5:
+      title += soup.h5.text + ' '
+    title += soup.p.text
+    price = soup.find_all('p')[1].text.replace(',', '')[:-4]
 
-  return Artwork(title, img_url, [int(price), int(price)])
+    # Retrieve real image url
+    driver.get(img_url)
+    sleep(5)
+    img_url = driver.current_url
+    cutoff = img_url.index("?url=") + 5
+    img_url = unquote(img_url[cutoff:])
+
+    works.append(Artwork(title, img_url, [int(price), int(price)]))
+    past.append(idx)
+
+  return works
 
