@@ -16,6 +16,7 @@ class HammerPy(Frame):
     self._root = root
     self.width = width
     self.height = height
+    self._scraper = None
     self._background = bg
     self._success_color = "#00d176"
     self._failure_color = "#ed214a"
@@ -154,7 +155,7 @@ class HammerPy(Frame):
     quantity_label = Label(work_options, style="HammerPy.TLabel", 
                            text="Number of works to retrieve:", padding=0)
 
-    self.quantity = Label(work_options, style="HammerPy.TLabel", text="01")
+    self.quantity = Label(work_options, style="HammerPy.TLabel", text=f"{self._limit.get()}".zfill(2))
     self.quantity_scale = Scale(work_options, orient="horizontal", length=150, 
                                 from_=1.0, to=10.0, variable=self._limit, 
                                 command=self._switch_limit)
@@ -457,7 +458,8 @@ class HammerPy(Frame):
       artist = pieces[0].strip()
       title = pieces[1].strip()
       year = title[title.rindex(' ') + 2:-1]
-      title = title[:title.rindex(' ')].replace('\'', '\"')
+      title = title[:title.rindex(' ')]
+      title[0] = title[-1] = '"'
 
     prices = self.curr_work.art.prices
     price = prices[0] if prices[0] == prices[1] else f"{prices[0]} - {prices[1]}"
