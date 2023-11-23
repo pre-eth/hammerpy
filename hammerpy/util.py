@@ -109,12 +109,14 @@ class Scraper(Thread):
     works = []
     while self._running and count < self._limit:
       url = f"{scrape_url}?page={randint(1, pagemax)}"
+      amount = randint(1, self._limit - count)
+      print(f"Amount: {amount}")
       if self._src_type:
         self.driver = webdriver.Firefox(options=options)
-        works = self._scrape(url, self.driver)
+        works = self._scrape(url, amount, self.driver)
         self.driver.quit()
       else:
-        works = self._scrape(url)
+        works = self._scrape(url, amount)
         
       for work in works:
         final_title = cleanse(work.title)

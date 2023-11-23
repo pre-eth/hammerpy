@@ -20,7 +20,7 @@ class Medium(Enum):
   DESIGN = "ion/design"
   MIXED_MEDIA = "ion/mixed-media"
 
-def scrape_artsy(url: str) -> list[Artwork]:
+def scrape_artsy(url: str, amount: int) -> list[Artwork]:
   agent = "Mozilla/5.0 (Windows Phone 10.0; Android 6.0.1; Microsoft; RM-1152) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/52.0.2743.116 Mobile Safari/537.36 Edge/15.15254"
  
   # max number of pages that will be searched
@@ -43,9 +43,7 @@ def scrape_artsy(url: str) -> list[Artwork]:
     if not artdivs:
       continue
 
-    count = randint(1, 4)
-
-    for _ in range(count):
+    for _ in range(amount):
       div = choice(artdivs)
 
       price = div.findNext("div", attrs={"font-weight":"bold"}).text.replace(',','')
