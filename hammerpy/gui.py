@@ -2,7 +2,7 @@ from PIL import Image, ImageTk
 from queue import Queue, Empty
 from threading import Thread
 from tkinter import StringVar, IntVar, Canvas, Entry
-from tkinter.ttk import Frame, Label, Style, Scale, Button, Radiobutton, Combobox
+from tkinter.ttk import Frame, Label, Style, Scale, Button, Radiobutton, Combobox, Progressbar
 
 from hammerpy.artsy import scrape_artsy, Medium
 from hammerpy.sothebys import scrape_sothebys, Category
@@ -257,9 +257,13 @@ class HammerPy(Frame):
     self.action = self.stop_collecting
     self.redraw = self.draw_loading_screen
 
-    self.loading = Label(self.backdrop, style="HammerPy.TLabel", 
-                        text=f"Fetching artworks... ({len(self.works)}/{self._limit.get()})\n")
-    self.loading.pack()
+    progbar_text = Label(self.backdrop, style="HammerPy.TLabel", 
+                        text="Loading...")
+    progbar_text.pack(pady=10)
+
+    self.loading = Progressbar(self.backdrop, length=540, value=0, maximum=self._limit.get() * 10)
+    self.loading.pack(pady=25)
+
     self._root.bind("<Escape>", self.confirm_stop)
 
     self._back = Button(self.backdrop, command=self.confirm_stop, style="HammerPy.TButton", text="GO BACK")
@@ -517,6 +521,8 @@ def update_status(h: HammerPy, q: Queue, limit: int):
     # determine other properties for this work and construct Guesswork object
     work, save_path = item
 
+    print(work)
+
     # determine dimensions for showing image in guess and result screens
     # IF THE IMAGE OBJECT ISN'T READ ALL AT ONCE HERE IT DOESN'T LOAD
     with Image.open(save_path) as img: 
@@ -531,7 +537,7 @@ def update_status(h: HammerPy, q: Queue, limit: int):
       tk_img2 = ImageTk.PhotoImage(image=size2)
     
     lower_bound = floor(work.prices[0] * (1.0 - factor))
-    upper_bound = floor(work.prices[1] * (1.0 + factor))
+    upper_bound = floor(work.prices[-1] * (1.0 + factor))
     
     keep = IntVar()
     keep.set(0)
@@ -540,7 +546,7 @@ def update_status(h: HammerPy, q: Queue, limit: int):
                            review_width, ceil(review_height), lower_bound, upper_bound, keep)
 
     h.works.append(guess_work)
-    h.loading["text"] = f"Fetching artworks... ({len(h.works)}/{limit})\n"
+    h.loading["value"] = len(h.works) * 10
   
   # Queue has been read in full, start the actual guessing game
   h.start_game()
