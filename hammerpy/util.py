@@ -77,7 +77,6 @@ class Scraper(Thread):
     work = None
     scrape_url = ""
     pagemax = 100
-    options = Options()
     if self._src_type:
       from selenium import webdriver
       from selenium.webdriver.firefox.options import Options
@@ -85,6 +84,7 @@ class Scraper(Thread):
 
       scrape_url = f"https://www.sothebys.com/en/buy/{self._slug}"
 
+      options = Options()
       options.page_load_strategy = "none"
       options.add_argument('--disable-blink-features=AutomationControlled')
       options.add_argument(
@@ -115,8 +115,7 @@ class Scraper(Thread):
         self.driver.quit()
       else:
         works = self._scrape(url)
-      
-      # print(work)
+        
       for work in works:
         final_title = cleanse(work.title)
         save_path = f"img/{today_date}/{final_title}.jpg"

@@ -32,7 +32,6 @@ def scrape_artsy(url: str) -> list[Artwork]:
                 "KRW ₩":"krw"}
 
   l = 0
-  past = []
   works = []
   while not l:
     # pick a random page and get its content      
@@ -48,11 +47,8 @@ def scrape_artsy(url: str) -> list[Artwork]:
 
     for _ in range(count):
       div = choice(artdivs)
-      while div in past:
-        div = choice(artdivs)
 
       price = div.findNext("div", attrs={"font-weight":"bold"}).text.replace(',','')
-
       # get the image
       img_tag = div.findNext('img')
 
@@ -69,46 +65,45 @@ def scrape_artsy(url: str) -> list[Artwork]:
         continue
 
       work_prices = []
-      # find non US currency symbol, search in dict, 
-      # if found look up in api to get conversion rate for USD
       if price.startswith("US$"):       
         price = price.replace("US$",'').replace(',', '').replace('–', '-').strip()
 
         prices = price.split('-')
         work_prices.append(int(prices[0]))
         work_prices.append(int(prices[-1]))
-      else:
-        intl_money = [c for c in currencies if price.startswith(c)]
-        if intl_money:
-          # exchange rate lookup for foreign currencies 
-          prices = findall(r"((\d,*)+)", price)
-          p1 = int(prices[0][0].replace(',', ''))
-          curr = intl_money[0]
-          currency = currencies[curr]
-          rate_json = get(f"https://cdn.jsdelivr.net/gh/fawazahmed0/currency-api@1/latest/currencies/usd/{currency}.json").json()
-          
-          exchange_rate = float(rate_json[currency])
 
-          # no hyphen means first price is same as "second" price
-          work_prices.append(floor(p1 / exchange_rate))
-          p2 = p1 
-
-          # hyphen indicates price RANGE, so need to convert 2nd price as well
-          if '-' in price:
-            p2 = int(prices[1][0].replace(',', ''))
-            work_prices.append(floor(p2 / exchange_rate))
-          else:
-            # if currency is not found or it's a phrase like "contact for price", 
-            # "sold", etc - oh well pick another artwork
-            continue
-
-        # format title into "name - 'work' (date)"
-        title = img_tag.get("alt").replace(',', ' -', 1)
-        title = title.replace(title[title.rindex(','):title.rindex(',')+2], ' (')+')' 
+      # find non US currency symbol, search in dict, 
+      # if found look up in api to get conversion rate for USD
+      elif intl_money := [c for c in currencies if price.startswith(c)]:
+        # exchange rate lookup for foreign currencies 
+        prices = findall(r"((\d,*)+)", price)
+        p1 = int(prices[0][0].replace(',', ''))
+        curr = intl_money[0]
+        currency = currencies[curr]
+        rate_json = get(f"https://cdn.jsdelivr.net/gh/fawazahmed0/currency-api@1/latest/currencies/usd/{currency}.json").json()
         
-        works.append(Artwork(title, img, work_prices))
-        past.append(div)
-        # to make sure we don't flood Artsy with requests and cause us to get blocked
-        l = 1
+        exchange_rate = float(rate_json[currency])
 
+        # no hyphen means first price is same as "second" price
+        work_prices.append(floor(p1 / exchange_rate))
+        p2 = p1 
+
+        # hyphen indicates price RANGE, so need to convert 2nd price as well
+        if '-' in price:
+          p2 = int(prices[1][0].replace(',', ''))
+          work_prices.append(floor(p2 / exchange_rate))
+      else:
+        # if currency is not found or it's a phrase like "contact for price", 
+        # "sold", etc - oh well pick another artwork
+        continue
+
+      # format title into "name - 'work' (date)"
+      title = img_tag.get("alt").replace(',', ' -', 1)
+      title = title.replace(title[title.rindex(','):title.rindex(',')+2], ' (')+')' 
+      
+      works.append(Artwork(title, img, work_prices))
+      artdivs.remove(div)
+
+      # to make sure we don't flood Artsy with requests and cause us to get blocked
+      l = 1
   return works

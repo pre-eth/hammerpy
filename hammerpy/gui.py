@@ -82,7 +82,6 @@ class HammerPy(Frame):
 
   def quit_game(self, e=None):
     if self._scraper and self._scraper.driver:
-      print("CLOSING DRIVER...")
       self._scraper.driver.quit()
     if self.works:
       remove_works(self.works)
@@ -291,7 +290,7 @@ class HammerPy(Frame):
     self._scraper = Scraper(q, limit, _src, slug, fn)
     self._scraper.start()
 
-    t = Thread(target=update_status, daemon=True, args=(self, q, limit))
+    t = Thread(target=update_status, daemon=True, args=(self, q))
     t.start()
 
   def stop_collecting(self, e=None):
@@ -502,7 +501,7 @@ class HammerPy(Frame):
 
 # separate function in separate thread from HammerPy
 # because main thread must run GUI
-def update_status(h: HammerPy, q: Queue, limit: int):
+def update_status(h: HammerPy, q: Queue):
   from math import ceil, floor
 
   disp_height = h.height - 200
