@@ -211,10 +211,10 @@ class HammerPy(Frame):
     if e:
       self._src.set(e.keysym != 'a')
 
-    if self._src.get() == 0:
-       self.filter_box["values"] = [m.name.capitalize().replace('_', ' ') for m in list(Medium)]
+    if not self._src.get():
+       self.filter_box["values"] = [m.name.capitalize().replace('_', ' ') for m in Medium]
     else:
-       self.filter_box["values"] = [m.name.capitalize() for m in list(Category)]
+       self.filter_box["values"] = [c.name.capitalize() for c in Category]
     
     self.filter_box.current(0)
 
@@ -280,9 +280,7 @@ class HammerPy(Frame):
     fn = scrape_artsy if not _src else scrape_sothebys
     slug = self._slug.get().upper()
 
-    if _src:
-      slug = Category[slug].value
-    else:
+    if not _src:
       slug = Medium[slug.replace(' ', '_')].value
 
     self.draw_loading_screen()
@@ -316,6 +314,7 @@ class HammerPy(Frame):
     self._root.bind("<Escape>", self.redraw)
   
   def start_game(self):
+    # self._limit = len(self.works)
     self.active_guess = 0
     self.action = self.draw_main_menu
     self.redraw = self.add_artwork
@@ -364,7 +363,9 @@ class HammerPy(Frame):
     guess = self.guess_value.get().strip()
 
     if guess and guess.isnumeric():
+      # Add user's guess for this Guesswork to the item itself
       self.works[self.active_guess].guess = int(guess)
+
       self.active_guess += 1
       if self.active_guess == len(self.works):
         self.draw_results_screen()
