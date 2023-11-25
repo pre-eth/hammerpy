@@ -9,7 +9,7 @@ from os import mkdir, path
 from random import randint
 from threading import Thread
 from queue import Queue
-from os import remove, path, environ
+from os import remove, path
 
 from tkinter import IntVar
 from tkinter.ttk import Label
@@ -58,66 +58,36 @@ class Scraper(Thread):
     self.daemon = True              # mark thread as daemon so it runs in bg, stops on program close
     self._q = queue                 # Message queue for sharing downloaded works to a consumer thread
     self._limit = limit             # how many artworks to scrape
-    self._src_type = src_type       # whether source to scrape is Artsy (0) or Sotheby's (1)
     self._scrape = scrape_fn        # source to scrape
     self._slug = slug               # filter that user wants to apply to results
     self.driver = None
+
+    # Does the Sotheby's page max binary file exist? If not, then create it
+    if src_type and not path.isfile("hammerpy/sothpmax"):
+      from hammerpy.sothebys import Category
+      from array import array
+
+      with open("hammerpy/sothpmax", "wb+") as file:
+        pmax_arr = array('B', [0]* len(Category))
+        pmax_arr.tofile(file)
 
   def stop(self):
     self._running = False
   
   def run(self):
     count = 0
+    works = []
 
     # neatly organize images into folders per day for different "sessions"
     today_date = date.today()
     if not path.isdir(f"img/{today_date}"):
       mkdir(f"img/{today_date}")
-
-    work = None
-    scrape_url = ""
-    pagemax = 100
-    if self._src_type:
-      from selenium import webdriver
-      from selenium.webdriver.firefox.options import Options
-      from selenium.webdriver.common.by import By
-
-      scrape_url = f"https://www.sothebys.com/en/buy/{self._slug}"
-
-      options = Options()
-      options.page_load_strategy = "none"
-      options.add_argument('--disable-blink-features=AutomationControlled')
-      options.add_argument(
-          "--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.88 Safari/537.36")
-      options.add_argument("--headless")
-
-      if "HPY_SOTHEBYS_PMAX" not in environ:
-        self.driver = webdriver.Firefox(options=options)
-        self.driver.get(scrape_url)
-        sleep(5)
-
-        # we start by getting the page limit for this category
-        # need to read second to last element of pagination
-        last_li = self.driver.find_element(By.TAG_NAME, "nav")
-        pages = last_li.find_elements(By.TAG_NAME, "li")[-2]
-        pagemax = int(pages.text) 
-
-        self.driver.quit()
-    else:
-      scrape_url = f"https://www.artsy.net/collect{self._slug}"
-
-    works = []
+     
     while self._running and count < self._limit:
-      url = f"{scrape_url}?page={randint(1, pagemax)}"
       amount = randint(1, self._limit - count)
       print(f"Amount: {amount}")
-      if self._src_type:
-        self.driver = webdriver.Firefox(options=options)
-        works = self._scrape(url, amount, self.driver)
-        self.driver.quit()
-      else:
-        works = self._scrape(url, amount)
-        
+      works, no_more = self._scrape(self._slug, amount)
+              
       for work in works:
         final_title = cleanse(work.title)
         save_path = f"img/{today_date}/{final_title}.jpg"
@@ -128,9 +98,9 @@ class Scraper(Thread):
         self._q.put_nowait((work, save_path))
         if count == 5:
           sleep(5)
-    
-    if self._src_type:
-      self.driver.quit()
+        
+        if no_more:
+          break
 
     self._q.put_nowait(None)
 
