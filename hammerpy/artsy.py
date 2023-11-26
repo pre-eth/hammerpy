@@ -20,30 +20,30 @@ class Medium(Enum):
   DESIGN = "ion/design"
   MIXED_MEDIA = "ion/mixed-media"
 
-def scrape_artsy(url: str, amount: int) -> list[Artwork]:
-  agent = "Mozilla/5.0 (Windows Phone 10.0; Android 6.0.1; Microsoft; RM-1152) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/52.0.2743.116 Mobile Safari/537.36 Edge/15.15254"
- 
-  # max number of pages that will be searched
-  pagemax = 100         
+def scrape_artsy(slug: str, amount: int) -> (list[Artwork], bool):
+  agent = "Mozilla/5.0 (Windows Phone 10.0; Android 6.0.1; Microsoft; RM-1152) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/52.0.2743.116 Mobile Safari/537.36 Edge/15.15254" 
  
   # for lookup with currency api, tried to include most of the major ones
   currencies = {"C$":"cad","€":"eur","£":"gbp","HK$":"hkd","¥":"jpy",
                 "ZAR":"zar","CN¥":"cny","BRL":"brl","₱":"php", 
                 "KRW ₩":"krw"}
 
+  # max number of pages that will be searched
+  pagemax = 100     
+
   l = 0
   works = []
   while not l:
     # pick a random page and get its content      
+    url = f"https://www.artsy.net/collect{slug}?page={randint(1,pagemax)}" 
     dump = get(url, data={"User-Agent" : agent})
     dump = BeautifulSoup(dump.text, "html.parser")
 
     # artworkGridItem is identifier for any work on the page, we choose a random one
-    artdivs = dump.find_all("div", attrs={"data-test":"artworkGridItem"})
-    if not artdivs:
+    if not (artdivs := dump.find_all("div", attrs={"data-test":"artworkGridItem"})):
       continue
 
-    for _ in range(amount):
+    for i in range(amount):
       div = choice(artdivs)
 
       price = div.findNext("div", attrs={"font-weight":"bold"}).text.replace(',','')
@@ -101,7 +101,13 @@ def scrape_artsy(url: str, amount: int) -> list[Artwork]:
       
       works.append(Artwork(title, img, work_prices))
       artdivs.remove(div)
+      if not artdivs:
+        break
 
-      # to make sure we don't flood Artsy with requests and cause us to get blocked
+    # check if there was enough results on page to satisfy quota
+    # if not, pick another random page and start again
+    if i == amount - 1:
       l = 1
-  return works
+    else:
+      amount -= i
+  return (works, False)
