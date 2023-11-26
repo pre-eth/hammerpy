@@ -27,17 +27,21 @@ class Category(Enum):
   APPAREL = "fashion/apparel"
   SNEAKERS = "fashion/sneaker"
 
-def get_page_limit(url: str, driver: webdriver.Firefox, pmax_arr: array, idx: int) -> int:
+def get_page_limit(url: str, pmax_arr: array, idx: int) -> int:
   from selenium.webdriver.common.by import By
-  from time import sleep
+  from selenium.webdriver.support.ui import WebDriverWait
+  from selenium.webdriver.support import expected_conditions as EC
 
-  print(f"getting page max for {url}")
+  options = Options()
+  options.add_argument("--headless")
+  driver = webdriver.Chrome(options=options)
   driver.get(url)
-  sleep(3)
-
+  
   # to get the page limit for this category, we read
   # the second to last element of pagination
-  last_li = driver.find_element(By.TAG_NAME, "nav")
+  last_li = WebDriverWait(driver, 5).until(
+    EC.presence_of_element_located((By.TAG_NAME, "nav"))
+  )
   pages = last_li.find_elements(By.TAG_NAME, "li")
   if len(pages) == 1:
     pmax = 1
@@ -49,16 +53,14 @@ def get_page_limit(url: str, driver: webdriver.Firefox, pmax_arr: array, idx: in
   # Write to file so next time we don't need to do all this
   with open("hammerpy/sothpmax", "wb+") as file:
     pmax_arr.tofile(file)
-  
+
+  driver.quit()
   return pmax
 
 def scrape_sothebys(cat: str, amount: int) -> (list[Artwork], bool):
+  agent = "Mozilla/5.0 (Windows Phone 10.0; Android 6.0.1; Microsoft; RM-1152) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/52.0.2743.116 Mobile Safari/537.36 Edge/15.15254"
   slug = Category[cat].value
   scrape_url = f"https://www.sothebys.com/en/buy/{slug}"
-
-  options = Options()
-  options.add_argument("--headless")
-  driver = webdriver.Firefox(options=options)
   
   pagemax = 0
   
@@ -67,17 +69,18 @@ def scrape_sothebys(cat: str, amount: int) -> (list[Artwork], bool):
     pmax_arr.fromfile(file, len(Category))
     idx = list(name for name, _ in Category.__members__.items()).index(cat)
     pagemax = pmax_arr[idx]
-    if not pagemax:
-      pagemax = get_page_limit(scrape_url, driver, pmax_arr, idx)
+    
+  # if no pagemax recorded for category, or stored pagemax fails diagnostic test
+  if not pagemax:
+    pagemax = get_page_limit(scrape_url, pmax_arr, idx)
 
-  scrape_url += f"?page={randint(1,pagemax)}"
+  scrape_url = f"{scrape_url}?page={randint(1,pagemax)}"
+  options = Options()
+  options.add_argument(f"--user-agent={agent}")
+  options.add_argument("--headless")
+  driver = webdriver.Chrome(options=options)
 
-  # quick diagonostic request to make sure url is valid
-  while get(scrape_url).status_code != 200:
-    scrape_url = f"{scrape_url[:scrape_url.rindex('?')]}?page={randint(1,pagemax)}"
-
-  print(f"FULL URL:{scrape_url}")
-
+  print(f"LAUNCHING {scrape_url}...")
   driver.get(scrape_url)
 
   items = []
@@ -89,22 +92,20 @@ def scrape_sothebys(cat: str, amount: int) -> (list[Artwork], bool):
       json_str = decompress(request.response.body).decode('utf8')
       items = loads(json_str)["results"][0]["hits"]
       break
-
-  driver.quit()
   
+  driver.quit()
   results = len(items)
 
   # Randomly select and get metadata for items
-  print("retrieving metadata")
   for _ in range(amount):
-    idx = randint(1, len(items))  
+    idx = randint(1, results)  
 
     work = items[idx]
 
     # Get Artwork members
     title = work["title"]
     lower_bound = work["lowEstimate"]
-    upper_bound = work["upperEstimate"]
+    upper_bound = work["highEstimate"]
     img_url = work["imageUrl"]
 
     # Retrieve full resolution image
@@ -113,7 +114,6 @@ def scrape_sothebys(cat: str, amount: int) -> (list[Artwork], bool):
 
     works.append(Artwork(title, img_url, [lower_bound, upper_bound]))
     items.remove(work)
-    
     if not items:
       break
 
