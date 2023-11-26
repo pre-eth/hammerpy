@@ -462,8 +462,7 @@ class HammerPy(Frame):
       artist = pieces[0].strip()
       title = pieces[1].strip()
       year = title[title.rindex(' ') + 2:-1]
-      title = title[:title.rindex(' ')]
-      title[0] = title[-1] = '"'
+      title = f"\"{title[1:title.rindex(' ') - 1]}\""
 
     prices = self.curr_work.art.prices
     price = prices[0] if prices[0] == prices[1] else f"{prices[0]} - {prices[1]}"
