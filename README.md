@@ -10,7 +10,7 @@ Currently the game retrieves artwork from [Artsy](https://www.artsy.net) and [So
 
 ## Setup and Installation
 
-HammerPy requires >= Python 3.8. In order for the Sotheby's integration to work, you need to install a web driver for Firefox, which takes 2 seconds and can be found [here](https://github.com/mozilla/geckodriver/releases).
+HammerPy requires >= Python 3.8. In order for the Sotheby's integration to work, you need to install a web driver for Chrome, which takes 2 seconds and can be found [here](https://chromedriver.chromium.org/downloads).
 
 Dependencies:
 - requests
