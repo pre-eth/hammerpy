@@ -43,15 +43,15 @@ HammerPy downloads the images of the art to your computer temporarily for the li
 
 You can traverse the menu without using the mouse! Here are the key bindings:
 
-`q` - Quit. `Control/Command Q` work as well.
-`a` - Selects Artsy as the source
-`s` - Selects Sotheby's as the source
-`ArrowUp/ArrowDown` - Cycles through the Medium / Category
-`ArrowLeft/ArrowRight` - Decrements or increments the number of works to retrieve
-`1` - Sets the difficulty to Easy
-`2` - Sets the difficulty to Medium
-`3` - Sets the difficulty to Hard
-`Return` - Starts game
+`q` - Quit. `Control/Command Q` work as well. <br/>
+`a` - Selects Artsy as the source <br/>
+`s` - Selects Sotheby's as the source <br/>
+`ArrowUp/ArrowDown` - Cycles through the Medium / Category <br/>
+`ArrowLeft/ArrowRight` - Decrements or increments the number of works to retrieve <br/>
+`1` - Sets the difficulty to Easy <br/>
+`2` - Sets the difficulty to Medium <br/>
+`3` - Sets the difficulty to Hard <br/>
+`Return` - Starts game <br/>
 
 You can also hit `Return` to advance through the guessing screens.
 
