@@ -19,7 +19,9 @@ Dependencies:
 - beautifulsoup4
 - selenium
 
-First, consider setting up a virtual environment (`venv`). From the project root,
+### Standard Installation
+
+First, consider setting up a virtual environment (`venv`). From the project root:
 
 ```bash
 mkdir ./env
@@ -29,12 +31,16 @@ python3 -m pip install -r requirements.txt
 python3 hammer.py
 ```
 
-Or you can install the dependencies system-wide (not really recommended) and run!
+Or you can install the dependencies system-wide (not really recommended) and run the script.
 
 ```bash
 pip install -r requirements.txt
 python3 hammer.py
 ```
+
+### Docker
+
+Build the image with `./build.sh` and use `./run.sh` to launch the image!
 
 ## Quickstart
 
