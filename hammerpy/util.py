@@ -16,9 +16,6 @@ from tkinter.ttk import Label
 
 from PIL import ImageTk
 
-from hammerpy.sothebys import Category
-
-
 @dataclass
 class Artwork:
     """Represents a piece of artwork scraped from the internet."""
@@ -95,7 +92,7 @@ class Scraper(Thread):
         # Does the Sotheby's page max binary file exist? If not, then create it
         if src_type and not path.isfile("hammerpy/sothpmax"):
             with open("hammerpy/sothpmax", "wb+") as file:
-                pmax_arr = array("B", [0] * len(Category))
+                pmax_arr = array("B", [0] * 11)
                 pmax_arr.tofile(file)
 
     def stop(self):
