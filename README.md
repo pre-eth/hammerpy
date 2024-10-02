@@ -26,13 +26,14 @@ mkdir ./env
 python3 -m venv ./env
 source ./env/bin/activate
 python3 -m pip install -r requirements.txt
+python3 hammer.py
 ```
 
 Or you can install the dependencies system-wide (not really recommended) and run!
 
 ```bash
 pip install -r requirements.txt
-python hammer.py
+python3 hammer.py
 ```
 
 ## Quickstart
