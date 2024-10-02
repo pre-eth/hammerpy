@@ -25,17 +25,17 @@ First, consider setting up a virtual environment (`venv`). From the project root
 
 ```bash
 mkdir ./env
-python3 -m venv ./env
+python3.11 -m venv ./env
 source ./env/bin/activate
-python3 -m pip install -r requirements.txt
-python3 hammer.py
+python3.11 -m pip install -r requirements.txt
+python3.11 hammer.py
 ```
 
 Or you can install the dependencies system-wide (not really recommended) and run the script.
 
 ```bash
 pip install -r requirements.txt
-python3 hammer.py
+python3.11 hammer.py
 ```
 
 ### Docker
